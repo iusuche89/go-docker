@@ -1,0 +1,45 @@
+version: '3.7'
+services:
+  node:
+    build:
+      context: ./
+      dockerfile: ./docker/node/Dockerfile
+    volumes:
+      - ./src:/var/www/html/
+    working_dir: /var/www/html
+    command: sh -c "cd /var/www/html && yarn run"
+    ports:
+      - "8080"
+    depends_on:
+      - db
+      - go
+  db:
+    image: mysql:8.0.19
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: free_space_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: passpass
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - ./docker/db/data:/var/lib/mysql
+      - ./docker/db/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./docker/db/sql:/docker-entrypoint-initdb.d # 該当ディレクトリ内sqlファイルのSQLを実行
+  go:
+    build: ./docker/go
+    tty: true # これをいれておかないと仮想マシンが停止する
+    depends_on:
+      - db
+    ports:
+      - "3000"
+    volumes:
+      - ./src:/go/src
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+  nginx:
+    build: ./docker/nginx
+    ports:
+      - "8000:80"
+    environment:
+      - TZ=Asia/Tokyo
